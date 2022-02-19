@@ -101,6 +101,7 @@
 #include "ascii.h"
 #include "expat.h"
 #include "siphash.h"
+#include "xcsinc.c"
 
 #if defined(HAVE_GETRANDOM) || defined(HAVE_SYSCALL_GETRANDOM)
 #  if defined(HAVE_GETRANDOM)
@@ -3664,15 +3665,23 @@ storeAtts(XML_Parser parser, const ENCODING *enc, const char *attStr,
     return XML_ERROR_NONE;
   prefixLen = 0;
   if (parser->m_ns_triplets && binding->prefix->name) {
-    for (; binding->prefix->name[prefixLen++];)
-      ; /* prefixLen includes null terminator */
+    const size_t candidateLen
+        = xcslen(binding->prefix->name) + /*null terminator*/ 1;
+    if (candidateLen > INT_MAX)
+      return XML_ERROR_NO_MEMORY;
+    prefixLen = (int)candidateLen;
   }
   tagNamePtr->localPart = localPart;
   tagNamePtr->uriLen = binding->uriLen;
   tagNamePtr->prefix = binding->prefix->name;
   tagNamePtr->prefixLen = prefixLen;
-  for (i = 0; localPart[i++];)
-    ; /* i includes null terminator */
+  {
+    const size_t candidateLen = xcslen(localPart) + /*null terminator*/ 1;
+    /* Detect and prevent integer overflow */
+    if (i > INT_MAX)
+      return XML_ERROR_NO_MEMORY;
+    i = (int)candidateLen;
+  }
 
   /* Detect and prevent integer overflow */
   if (binding->uriLen > INT_MAX - prefixLen
@@ -5543,9 +5552,7 @@ doProlog(XML_Parser parser, const ENCODING *enc, const char *s, const char *end,
           return XML_ERROR_NO_MEMORY;
         name = el->name;
         dtd->scaffold[myindex].name = name;
-        nameLen = 0;
-        for (; name[nameLen++];)
-          ;
+        nameLen = xcslen(name) + /*null terminator*/ 1;
 
         /* Detect and prevent integer overflow */
         if (nameLen > UINT_MAX - dtd->contentStringLen) {
@@ -7020,10 +7027,7 @@ keyeq(KEY s1, KEY s2) {
 
 static size_t
 keylen(KEY s) {
-  size_t len = 0;
-  for (; *s; s++, len++)
-    ;
-  return len;
+  return xcslen(s);
 }
 
 static void
@@ -7654,12 +7658,10 @@ copyString(const XML_Char *s, const XML_Memory_Handling_Suite *memsuite) {
   size_t charsRequired = 0;
   XML_Char *result;
 
-  /* First determine how long the string is */
-  while (s[charsRequired] != 0) {
-    charsRequired++;
-  }
-  /* Include the terminator */
-  charsRequired++;
+  const size_t candidateLen = xcslen(s) + /*null terminator*/ 1;
+  if (candidateLen > INT_MAX)
+    return NULL;
+  charsRequired = (int)candidateLen;
 
   /* Now allocate space for the copy */
   result = memsuite->malloc_fcn(charsRequired * sizeof(XML_Char));
