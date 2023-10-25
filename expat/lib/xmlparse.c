@@ -2553,6 +2553,8 @@ XML_GetFeatureList(void) {
      XML_L("XML_BLAP_ACT_THRES"),
      EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT},
 #endif
+    /* Added in Expat 2.6.0. */
+    {XML_FEATURE_GE, XML_L("XML_GE"), XML_GE * 2 - 1},
     {XML_FEATURE_END, NULL, 0}
   };
 
